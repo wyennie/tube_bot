@@ -1,13 +1,4 @@
-from openai import OpenAI
-import os
-from dotenv import load_dotenv
-
-load_dotenv()
-
-openai_api_key = os.getenv("OPENAI_API_KEY")
-client = OpenAI(api_key=openai_api_key)
-
-def transcribe_audio_to_text(audio_file_path, output_text_file):
+def transcribe_audio_to_text(audio_file_path, output_text_file, client):
    """
    Transcribe the given audio file to text using OpenAI's Whisper API.
    
