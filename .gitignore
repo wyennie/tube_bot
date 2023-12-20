@@ -3,3 +3,4 @@ __pycache__/
 temp_audio.mp3
 temp_video.mp4
 transcribed_text.txt
+*.mp4

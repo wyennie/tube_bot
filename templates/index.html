@@ -1,13 +1,61 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>YouTube Transcription</title>
+  <meta charset="UTF-8">
+  <title>YouTube Video ChatBot</title>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 <body>
-    <h1>YouTube Video Transcription</h1>
-    <form action="/" method="post">
-        <input type="text" name="youtube_url" placeholder="Enter YouTube URL">
-        <input type="submit" value="Transcribe Video">
-    </form>
+  <h1>YouTube Video ChatBot</h1>
+
+  <input type="text" id="youtubeUrl" placeholder="Enter YouTube Video URL" />
+  <button id="startTranscription" onclick="startTranscription()">Transcribe Video</button>
+  <p id="statusMessage"></p>
+
+  <input type="text" id="userMessage" placeholder="Say something to the chatbot" onkeypress="handleKeyPress(event)"/>
+  <button id="sendMessage">Send Message</button>
+
+  <textarea id="chatbotResponse" readonly placeholder="Chatbot's response will appear here..."></textarea>
+  <script>
+    function startTranscription() {
+      let youtubeUrl = document.getElementById('youtubeUrl').value;
+      if (youtubeUrl) {
+        document.getElementById('statusMessage').innerText = 'Transcribing, please wait...';
+
+        $.post('/transcribe', { youtube_url: youtubeUrl }, function(data) {
+          if (data.error) {
+            document.getElementById('statusMessage').innerText = data.error;
+          } else {
+            document.getElementById('statusMessage').innerText = data.message;
+          }
+        });
+      } else {
+        alert('Please enter a YouTube URL.');
+      }
+    }
+
+    function sendMessage() {
+      let userMessage = $('#userMessage').val();
+      if (userMessage) {
+        $.post('/chat', { user_message: userMessage }, function(data) {
+          if (data.error) {
+            console.error("Error from the bot:", data.error);
+            $('#chatbotResponse').val("Error: " + data.error);
+          } else {
+            console.log("Bot response:", data.bot_response);
+            $('#chatbotResponse').val(data.bot_response);
+          }
+        }, 'json');
+      } else {
+        alert('Please enter a message to send.');
+      }
+    }
+
+    function handleKeyPress(event) {
+      if (event.keyCode === 13 || event.key === 'Enter') {
+        sendMessage();
+      }
+    }
+  </script>
 </body>
 </html>

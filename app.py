@@ -1,59 +1,53 @@
-from flask import Flask, render_template, request, redirect, url_for
-from openai import OpenAI
-import threading
-from dotenv import load_dotenv
 import os
-
-import bot
-import transcribe
-import video_to_audio
+from flask import Flask, request, render_template, jsonify
+from tools import download_youtube_video, convert_mp4_to_mp3, transcribe_audio_to_text, chat_with_bot, create_chatbot_context
+from dotenv import load_dotenv
+from openai import OpenAI
 
 load_dotenv()
 
-openai_api_key = os.getenv("OPENAI_API_KEY")
-client = OpenAI(api_key=openai_api_key)
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
 app = Flask(__name__)
 
-# Route for the homepage
-@app.route('/', methods=['GET', 'POST'])
+conversation_context = []
+client = OpenAI(api_key=OPENAI_API_KEY)
+
+@app.route('/')
 def index():
-    if request.method == 'POST':
-        # Extract the YouTube URL from the form
-        youtube_url = request.form.get('youtube_url')
-        
-        # Start transcription process in a separate thread
-        threading.Thread(target=transcribe_video, args=(youtube_url,)).start()
-        
-        # Redirect to chat page
-        return redirect(url_for('chat'))
+  return render_template('index.html')
 
-    return render_template('index.html')
+@app.route('/transcribe', methods=['POST'])
+def transcribe_video():
+  video_url = request.form.get('youtube_url')
 
-# Route for the chat interface
-@app.route('/chat', methods=['GET', 'POST'])
+  video_path, error = download_youtube_video(video_url)
+  if error:
+    return jsonify({'error': error})
+  
+  audio_path, error = convert_mp4_to_mp3(video_path, 'temp_audio.mp3')
+  if error:
+    return jsonify({'error': error})
+  
+  transcribed_text, error = transcribe_audio_to_text(audio_path)
+  if error:
+    return jsonify({'error': error})
+  
+  global conversation_context
+  conversation_context = create_chatbot_context(transcribed_text)
+
+  return jsonify({'message': 'Transcription complete. You can now chat with the bot.'})
+
+@app.route('/chat', methods=['POST'])
 def chat():
-    context = bot.read_transcribed_text('transcribed_text.txt')
-    conversation = [] # Initialize the conversation history list
+  user_message = request.form.get('user_message')
 
-    if request.method == 'POST':
-        # Process chatbot interaction
-        user_message = request.form.get('user_message')
-        chatbot_response = process_chatbot_message(user_message, context, conversation)
-        return render_template('chat.html', response=chatbot_response)
-
-    return render_template('chat.html')
-
-def transcribe_video(youtube_url):
-    # Transcription logic from your main.py
-    video_to_audio.download_youtube_video(youtube_url)
-    video_to_audio.convert_mp4_to_mp3('temp_video.mp4', 'temp_audio.mp3')
-    transcribe.transcribe_audio_to_text('temp_audio.mp3', 'transcribed_text.txt', client)
-    pass
-
-def process_chatbot_message(user_message, context, conversation):
-    # Chatbot processing logic
-    response = bot.chat_with_bot(user_message, context, client, conversation)
-    return response
+  global conversation_context
+  try:
+    bot_response = chat_with_bot(conversation_context, user_message, client)
+    return jsonify({'bot_response': bot_response})
+  except Exception as e:
+    return jsonify({'error': str(e)})
 
 if __name__ == '__main__':
-    app.run(debug=True)
+  app.run(debug=True)
