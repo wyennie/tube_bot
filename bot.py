@@ -22,17 +22,17 @@ def chat_with_bot(user_input, context, client, conversation, model="gpt-4", freq
         max_tokens=max_tokens
     )
 
-    # Extracting the response message
+    # Extracting the response message 
     return response.choices[0].message.content
 
-def start_chatbot(client):
+def start_chatbot(client, user_message):
     """Starts the chatbot interaction."""
     context = read_transcribed_text('transcribed_text.txt')
     conversation = [] # Initialize the conversation history list
     print("Chatbot is ready to talk! Type 'quit' to exit.")
     while True:
-        user_input = input("You: ")
-        if user_input.lower() == 'quit':
+        # user_input = input("You: ")
+        if user_message.lower() == 'quit':
             break
-        response = chat_with_bot(user_input, context, client, conversation)
-        print("Bot:", response)
+        response = chat_with_bot(user_message, context, client, conversation)
+        return response
